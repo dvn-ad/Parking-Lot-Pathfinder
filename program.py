@@ -1,251 +1,122 @@
+import csv
+import math
 import heapq
-from typing import List, Tuple, Set, Optional
+import os
 
-class MazeSolver:
-    def __init__(self, maze: List[List[str]]):
-        """
-        Initialize the maze solver with A* algorithm
-        
-        Args:
-            maze: 2D list representing the maze where:
-                  '#' = wall
-                  ' ' or '.' = path
-                  'S' = start
-                  'E' = exit/goal
-        """
-        self.maze = maze
-        self.rows = len(maze)
-        self.cols = len(maze[0]) if maze else 0
-        self.start = None
-        self.end = None
-        self._find_start_and_end()
+# ---------- GRID UTILS ----------
+def read_csv_grid(filename):
+    with open(filename, "r") as f:
+        reader = csv.reader(f)
+        return [row for row in reader]
+
+def load_floors(folder):
+    floors = []
+    for file in sorted(os.listdir(folder)):
+        if file.endswith(".csv"):
+            floors.append(read_csv_grid(os.path.join(folder, file)))
+    return floors
+
+# ---------- PATHFINDING (A*) ----------
+def heuristic(a, b):
+    # 3D Manhattan distance
+    return abs(a[0]-b[0]) + abs(a[1]-b[1]) + abs(a[2]-b[2])
+
+def get_neighbors(pos, floors):
+    z, y, x = pos
+    neighbors = []
+    height, width = len(floors[0]), len(floors[0][0])
+    #height, width = len(floors[z]), len(floors[z][0])
+
     
-    def _find_start_and_end(self):
-        """Find the start (S) and end (E) positions in the maze"""
-        for i in range(self.rows):
-            for j in range(self.cols):
-                if self.maze[i][j] == 'S':
-                    self.start = (i, j)
-                elif self.maze[i][j] == 'E':
-                    self.end = (i, j)
-        
-        if not self.start or not self.end:
-            raise ValueError("Maze must contain both 'S' (start) and 'E' (exit) markers")
+    # moves in same floor
+    for dy, dx in [(-1,0),(1,0),(0,-1),(0,1)]:
+        ny, nx = y + dy, x + dx
+        if 0 <= ny < height and 0 <= nx < width:
+            if floors[z][ny][nx] != "#":
+                neighbors.append((z, ny, nx))
     
-    def heuristic(self, pos: Tuple[int, int]) -> float:
-        """
-        Calculate Manhattan distance heuristic from pos to end
-        
-        Args:
-            pos: Current position (row, col)
-            
-        Returns:
-            Manhattan distance to the goal
-        """
-        return abs(pos[0] - self.end[0]) + abs(pos[1] - self.end[1])
+    # check vertical (stairs/elevator)
+    if floors[z][y][x] == "S":
+        if z + 1 < len(floors) and floors[z+1][y][x] == "S":
+            neighbors.append((z+1, y, x))
+        if z - 1 >= 0 and floors[z-1][y][x] == "S":
+            neighbors.append((z-1, y, x))
+    return neighbors
+
+def a_star(floors, start, goal):
+    open_set = []
+    heapq.heappush(open_set, (0, start))
+    came_from = {}
+    g_score = {start: 0}
     
-    def get_neighbors(self, pos: Tuple[int, int]) -> List[Tuple[int, int]]:
-        """
-        Get valid neighboring positions (up, down, left, right)
+    while open_set:
+        _, current = heapq.heappop(open_set)
+        if current == goal:
+            # reconstruct path
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            return path[::-1]
         
-        Args:
-            pos: Current position (row, col)
-            
-        Returns:
-            List of valid neighbor positions
-        """
-        row, col = pos
-        neighbors = []
-        
-        # Directions: up, down, left, right
-        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        
-        for dr, dc in directions:
-            new_row, new_col = row + dr, col + dc
-            
-            # Check if within bounds
-            if 0 <= new_row < self.rows and 0 <= new_col < self.cols:
-                # Check if not a wall
-                if self.maze[new_row][new_col] != '#':
-                    neighbors.append((new_row, new_col))
-        
-        return neighbors
+        for neighbor in get_neighbors(current, floors):
+            tentative_g = g_score[current] + 1
+            if tentative_g < g_score.get(neighbor, float("inf")):
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f_score = tentative_g + heuristic(neighbor, goal)
+                heapq.heappush(open_set, (f_score, neighbor))
+    return None
+
+# ---------- SLOT SEARCH ----------
+def find_positions(floors, symbol):
+    positions = []
+    for z, floor in enumerate(floors):
+        for y, row in enumerate(floor):
+            for x, val in enumerate(row):
+                if val == symbol:
+                    positions.append((z, y, x))
+    return positions
+
+def find_best_slot(floors):
+    entrances = find_positions(floors, "E")
+    cars = find_positions(floors, "C")
+    slots = find_positions(floors, "P")
     
-    def solve(self) -> Optional[List[Tuple[int, int]]]:
-        """
-        Solve the maze using A* algorithm
-        
-        Returns:
-            List of positions representing the path from start to end,
-            or None if no path exists
-        """
-        # Priority queue: (f_score, counter, position)
-        # counter is used to break ties consistently
-        counter = 0
-        open_set = [(0, counter, self.start)]
-        counter += 1
-        
-        # Track visited nodes
-        came_from = {}
-        
-        # g_score: cost from start to current node
-        g_score = {self.start: 0}
-        
-        # f_score: g_score + heuristic (estimated total cost)
-        f_score = {self.start: self.heuristic(self.start)}
-        
-        # Set of positions in open_set for faster lookup
-        open_set_hash = {self.start}
-        
-        while open_set:
-            # Get node with lowest f_score
-            current_f, _, current = heapq.heappop(open_set)
-            open_set_hash.remove(current)
-            
-            # Check if we reached the goal
-            if current == self.end:
-                return self._reconstruct_path(came_from, current)
-            
-            # Explore neighbors
-            for neighbor in self.get_neighbors(current):
-                # Tentative g_score
-                tentative_g_score = g_score[current] + 1
-                
-                # If this path to neighbor is better than any previous one
-                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                    # Record the best path
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g_score
-                    f_score[neighbor] = tentative_g_score + self.heuristic(neighbor)
-                    
-                    # Add to open set if not already there
-                    if neighbor not in open_set_hash:
-                        heapq.heappush(open_set, (f_score[neighbor], counter, neighbor))
-                        counter += 1
-                        open_set_hash.add(neighbor)
-        
-        # No path found
+    if not entrances or not cars or not slots:
+        print("missing E, C, or P")
         return None
     
-    def _reconstruct_path(self, came_from: dict, current: Tuple[int, int]) -> List[Tuple[int, int]]:
-        """
-        Reconstruct the path from start to end
-        
-        Args:
-            came_from: Dictionary mapping each position to its predecessor
-            current: Current (final) position
-            
-        Returns:
-            List of positions from start to end
-        """
-        path = [current]
-        while current in came_from:
-            current = came_from[current]
-            path.append(current)
-        path.reverse()
-        return path
+    car = cars[0]
     
-    def visualize_solution(self, path: Optional[List[Tuple[int, int]]] = None):
-        """
-        Print the maze with the solution path marked
-        
-        Args:
-            path: List of positions representing the solution path
-        """
-        if path is None:
-            print("No solution found!")
-            print("\nOriginal Maze:")
-            for row in self.maze:
-                print(''.join(row))
-            return
-        
-        # Create a copy of the maze for visualization
-        solution_maze = [row[:] for row in self.maze]
-        
-        # Mark the path (excluding start and end)
-        for pos in path[1:-1]:
-            solution_maze[pos[0]][pos[1]] = '*'
-        
-        print(f"Solution found! Path length: {len(path)}")
-        print("\nMaze with solution (marked with *):")
-        for row in solution_maze:
-            print(''.join(row))
+    # pick top 5 nearest by heuristic distance to entrance
+    scored = sorted(slots, key=lambda s: heuristic(car, s))
+    candidates = scored[:5]
+    
+    best_slot = None
+    best_path = None
+    best_cost = float("inf")
+    
+    for slot in candidates:
+        path = a_star(floors, car, slot)
+        if path and len(path) < best_cost:
+            best_cost = len(path)
+            best_slot = slot
+            best_path = path
+    
+    return best_slot, best_path, best_cost
 
-
-def read_maze_from_input() -> List[List[str]]:
-    """
-    Read maze from user input
-    
-    Returns:
-        2D list representing the maze
-    """
-    print("Enter the maze (press Enter twice when done):")
-    print("Use: '#' for walls, ' ' or '.' for paths, 'S' for start, 'E' for exit")
-    print()
-    
-    maze = []
-    while True:
-        line = input()
-        if not line:
-            break
-        maze.append(list(line))
-    
-    return maze
-
-
-def main():
-    print("=" * 50)
-    print("A* Maze Solver")
-    print("=" * 50)
-    print()
-    
-    # Option 1: Use a predefined maze for testing
-    print("Choose input method:")
-    print("1. Use example maze")
-    print("2. Enter custom maze")
-    choice = input("Enter choice (1 or 2): ").strip()
-    
-    if choice == "1":
-        # Example maze
-        maze = [
-            list("##########"),
-            list("#S.......#"),
-            list("#.####.#.#"),
-            list("#....#.#.#"),
-            list("####.#.#.#"),
-            list("#....#...#"),
-            list("#.####.###"),
-            list("#......#E#"),
-            list("##########")
-        ]
-        print("\nUsing example maze:")
-        for row in maze:
-            print(''.join(row))
-    else:
-        # Custom maze input
-        maze = read_maze_from_input()
-    
-    print("\n" + "=" * 50)
-    
-    try:
-        # Create solver and solve the maze
-        solver = MazeSolver(maze)
-        print(f"Start position: {solver.start}")
-        print(f"Exit position: {solver.end}")
-        print("\nSolving maze using A* algorithm...")
-        print()
-        
-        path = solver.solve()
-        solver.visualize_solution(path)
-        
-        if path:
-            print(f"\nPath coordinates: {path}")
-            
-    except ValueError as e:
-        print(f"Error: {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-
+# ---------- MAIN ----------
 if __name__ == "__main__":
-    main()
+    floors = load_floors("maps")  # folder name
+    best_slot, path, cost = find_best_slot(floors)
+    
+    if best_slot:
+        print(f"Best slot: Floor {best_slot[0]}, Pos ({best_slot[1]}, {best_slot[2]})")
+        print(f"Total cost: {cost}")
+        print("Path:")
+        for step in path:
+            print(f"  Floor {step[0]} → ({step[1]}, {step[2]})")
+    else:
+        print("No valid slot found!")
