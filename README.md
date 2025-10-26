@@ -44,7 +44,7 @@ Each `.csv` file represents **one parking floor**, and all files are placed insi
 
 ---
 
-## ⚙️ How It Works
+## How It Works
 
 1. The program loads all `.csv` files in the `maps/` folder (each file = one floor).
 2. You choose which algorithm(s) to run:
