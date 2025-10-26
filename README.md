@@ -1,5 +1,5 @@
 
-# 🅿️ Parking Lot Pathfinder
+# Parking Lot Pathfinder
 
 This program simulates an **optimal parking slot finder** using classic **pathfinding algorithms** — **A***, **Dijkstra**, and **BFS** — to determine the most efficient route inside a **multi-floor parking building**.
 
@@ -7,7 +7,7 @@ Each parking floor is represented as a **`.csv` map file** stored inside the `ma
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 maps/
@@ -21,7 +21,7 @@ Each `.csv` file represents **one parking floor**, and all files are placed insi
 
 ---
 
-## 🗺️ Map Format (CSV)
+## Map Format (CSV)
 
 * The map size is **flexible** (recommended: 20×20 for testing).
 * Use commas (`,`) to separate each cell.
@@ -69,7 +69,7 @@ Each `.csv` file represents **one parking floor**, and all files are placed insi
 
 ---
 
-## 🧩 Example Map (floor0.csv)
+## Example Map (floor0.csv)
 
 ```
 #,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#
@@ -81,7 +81,7 @@ O,^,P,P,P,#,L,L,L,#,D,D,D,#,P,P,P,v,#
 
 ---
 
-## 🚀 How to Run
+## How to Run
 
 ```bash
 python program.py
@@ -107,7 +107,7 @@ Show paths? (y/n): n
 
 ---
 
-## 🧾 Example Output
+## Example Output
 
 ```
 === Running A_STAR ===
