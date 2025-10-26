@@ -10,7 +10,6 @@ Each parking floor is represented as a **`.csv` map file** stored inside the `ma
 ---
 
 ## Folder Structure
-## Folder Structure
 
 ```
 maps/
@@ -38,7 +37,6 @@ Current project state:
 ---
 
 ## Map Format (CSV)
-## Map Format (CSV)
 
 * The map size is **flexible** (recommended: 20×20 for testing).
 * Use commas (`,`) to separate each cell.
@@ -61,7 +59,6 @@ Current project state:
 
 ---
 
-## How It Works
 ## How It Works
 
 1. The program loads all `.csv` files in the `maps/` folder (each file = one floor).
@@ -96,6 +93,23 @@ Current project state:
 
 ---
 
+## Example Map (floor0.csv)
+
+```
+#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#
+C,>,>,>,>,>,>,>,>,>,>,>,>,>,>,>,>,v,#
+#,^,P,P,P,#,L,L,L,#,D,D,D,#,P,P,P,v,#
+O,^,P,P,P,#,L,L,L,#,D,D,D,#,P,P,P,v,#
+#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#,#
+```
+
+---
+
+## How to Run
+
+```bash
+python program.py
+```
 
 Then follow the prompts:
 
@@ -120,7 +134,6 @@ Show paths? (y/n): n
 
 ---
 
-## Example Output
 ## Example Output
 
 ```
@@ -156,7 +169,7 @@ Path from Lobby → Slot:
 
 ---
 
-## 🧠 Notes
+## Notes
 
 * Each map **must contain at least**:
 
@@ -168,4 +181,5 @@ Path from Lobby → Slot:
 * The program automatically detects and warns about missing key symbols (`missing C, P, or O`).
 * Use **larger maps** (e.g., 30×30 or more) to better compare algorithm efficiency.
 * The **floor preference** penalty (×5) can be adjusted in code to change how much floor proximity matters.
+
 ---
