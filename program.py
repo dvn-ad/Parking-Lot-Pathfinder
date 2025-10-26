@@ -258,11 +258,11 @@ if __name__ == "__main__":
             if show_path:
                 print("\nPath from Car → Slot:")
                 for step in path_car:
-                    print(f"  Floor {step[0]} → ({step[1]}, {step[2]})")
+                    print(f"  Floor {step[0]} → ({step[1]+1}, {step[2]+1})")
 
                 print("\nPath from Lobby → Slot:")
                 for step in path_lobby:
-                    print(f"  Floor {step[0]} → ({step[1]}, {step[2]})")
+                    print(f"  Floor {step[0]} → ({step[1]+1}, {step[2]+1})")
         else:
             print("No valid slot found!")
             print(f"Execution Time: {exec_time:.4f} seconds")
