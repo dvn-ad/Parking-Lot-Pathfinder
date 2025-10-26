@@ -10,41 +10,26 @@ def read_csv_grid(filename):
     with open(filename, "r") as f:
         reader = csv.reader(f)
         return [row for row in reader]
-# =================================================================================================================================
-# def load_floors(folder):
-#     floors = []
-#     for file in sorted(os.listdir(folder)):
-#         if file.endswith(".csv"):
-#             floors.append(read_csv_grid(os.path.join(folder, file)))
-#     return floors
+
 def load_floors(folder):
     floors = []
-    
-    # Get all csv files from the folder
     csv_files = [f for f in os.listdir(folder) if f.endswith(".csv")]
-    
-    # Define a key function to extract the number from the filename
+
     def get_sort_key(filename):
         try:
-            # Assumes filename like "floor10.csv" or "map10.csv"
             name_part = filename.split('.')[0]
-            # Extracts all digits (e.g., "10" from "floor10")
             return int("".join(filter(str.isdigit, name_part)))
         except ValueError:
-            # Fallback for any filenames without numbers
             return 0
-            
-    # Sort the files using the numeric key
+
     sorted_files = sorted(csv_files, key=get_sort_key)
-    
-    # Now load them in the correct order
     for file in sorted_files:
         floors.append(read_csv_grid(os.path.join(folder, file)))
-        
     return floors
 
 # ---------- PATHFINDING UTILS ----------
 def heuristic(a, b):
+    # Manhattan distance for 3D grid
     return abs(a[0]-b[0]) + abs(a[1]-b[1]) + abs(a[2]-b[2])
 
 def can_move(floors, z, y, x, dy, dx):
@@ -82,6 +67,9 @@ def pathfind(floors, start, goal, algo="a_star"):
         return bfs(floors, start, goal)
     elif algo == "dijkstra":
         return dijkstra(floors, start, goal)
+    # *** DIUBAH: Sekarang memanggil "greedy_bfs" ***
+    elif algo == "greedy_bfs": 
+        return greedy_bfs(floors, start, goal)
     else:
         return a_star(floors, start, goal)
 
@@ -147,6 +135,30 @@ def bfs(floors, start, goal):
                 queue.append(neighbor)
     return None
 
+# *** DIUBAH: Menggantikan DFS dengan Greedy BFS ***
+def greedy_bfs(floors, start, goal):
+    open_set = []
+    heapq.heappush(open_set, (heuristic(start, goal), start))
+    came_from = {start: None} 
+
+    while open_set:
+        _, current = heapq.heappop(open_set)
+
+        if current == goal:
+            path = []
+            while current:
+                path.append(current)
+                current = came_from[current]
+            return path[::-1]
+
+        for neighbor in get_neighbors(current, floors):
+            if neighbor not in came_from:
+                came_from[neighbor] = current
+                priority = heuristic(neighbor, goal)
+                heapq.heappush(open_set, (priority, neighbor))
+    
+    return None
+
 # ---------- SLOT SEARCH ----------
 def find_positions(floors, symbol):
     positions = []
@@ -157,52 +169,53 @@ def find_positions(floors, symbol):
                     positions.append((z, y, x))
     return positions
 
-def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None):
+def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None, w_lobby=2, w_car=1):
     cars = find_positions(floors, "C")
     slots = find_positions(floors, target_symbol)
-    lobbies = find_positions(floors, "O")
-
-    if not cars or not slots or not lobbies:
-        print(f"[!] Missing required symbols (C, {target_symbol}, or O).")
+    
+    if not cars or not slots:
+        print(f"[!] Missing required symbols (C or {target_symbol}).")
         return None
 
-    # Warn if desired floor has no target symbol
-    if desired_floor is not None:
-        slots_on_floor = [s for s in slots if s[0] == desired_floor]
-        if not slots_on_floor:
-            print(f"[!] Warning: no '{target_symbol}' found on floor {desired_floor}. Searching all floors instead.")
-
     car = cars[0]
-    lobby = lobbies[0]
     best_slot, best_path_car, best_path_lobby = None, None, None
     best_score = float("inf")
 
     for slot in slots:
+        z, y, x = slot
+        lobbies_same_floor = [l for l in find_positions(floors, "O") if l[0] == z]
+        if not lobbies_same_floor:
+            continue
+
         path_car = pathfind(floors, car, slot, algo)
-        path_lobby = pathfind(floors, lobby, slot, algo)
-        if not path_car or not path_lobby:
+        if not path_car or path_car[-1] != slot:
             continue
 
-        # Ensure path actually ends at slot (avoid overshoot through S)
-        if path_car[-1] != slot or path_lobby[-1] != slot:
+        best_lobby_path = None
+        best_lobby_len = float("inf")
+        for lobby in lobbies_same_floor:
+            path_l = pathfind(floors, lobby, slot, algo)
+            if path_l and path_l[-1] == slot and len(path_l) < best_lobby_len:
+                best_lobby_len = len(path_l)
+                best_lobby_path = path_l
+
+        if best_lobby_path is None:
             continue
 
-        # floor distance penalty (favor closer to desired floor)
-        floor_diff = abs(slot[0] - desired_floor) if desired_floor is not None else 0
-        score = len(path_car) + len(path_lobby) + (floor_diff * 5)
+        floor_diff = abs(z - desired_floor) if desired_floor is not None else 0
+        score = len(path_car) * w_car + len(best_lobby_path) * w_lobby + (floor_diff * 5)
 
         if score < best_score:
             best_score = score
             best_slot = slot
             best_path_car = path_car
-            best_path_lobby = path_lobby
+            best_path_lobby = best_lobby_path
 
-    if best_slot:
-        cell_val = floors[best_slot[0]][best_slot[1]][best_slot[2]]
-        if cell_val != target_symbol:
-            print(f"[!] Warning: selected slot ({best_slot}) is '{cell_val}', not '{target_symbol}'.")
+    if not best_slot:
+        print("[!] No valid parking slot found that matches the target symbol and is reachable from a lobby.")
+        return None
 
-    return best_slot, best_path_car, best_path_lobby, best_score if best_slot else (None, None, None, None)
+    return best_slot, best_path_car, best_path_lobby, best_score
 
 # ---------- MAIN ----------
 if __name__ == "__main__":
@@ -211,7 +224,8 @@ if __name__ == "__main__":
     print("[1] A*")
     print("[2] Dijkstra")
     print("[3] BFS")
-    print("[4] Run all")
+    print("[4] Greedy BFS") 
+    print("[5] Run all")
     inp = input("Choose algorithm: ").strip()
 
     print("\nParking Type:")
@@ -230,28 +244,41 @@ if __name__ == "__main__":
     show_path = input("\nShow paths? (y/n): ").strip().lower() == "y"
 
     algos = []
-    if inp == "4":
-        algos = ["a_star", "dijkstra", "bfs"]
+    if inp == "5":
+        algos = ["a_star", "dijkstra", "bfs", "greedy_bfs"] 
     elif inp == "1":
         algos = ["a_star"]
     elif inp == "2":
         algos = ["dijkstra"]
     elif inp == "3":
         algos = ["bfs"]
+    elif inp == "4":
+        algos = ["greedy_bfs"] 
     else:
         print("Invalid choice.")
         exit()
 
+    print("\nPrefer parking closer to:")
+    print("[1] Lobby")
+    print("[2] Car Position")
+    pref = input("Choose preference: ").strip()
+    if pref == "1":
+        w_lobby, w_car = 2, 1
+    else:
+        w_lobby, w_car = 1, 2
+
     for algo in algos:
-        print(f"\n=== Running {algo.upper()} ===")
+        algo_name = algo.replace("_", " ").upper()
+        print(f"\n=== Running {algo_name} ===")
+        
         start_time = time.time()
-        result = find_best_slot(floors, algo, target_symbol, desired_floor)
+        result = find_best_slot(floors, algo, target_symbol, desired_floor, w_lobby, w_car)
         end_time = time.time()
         exec_time = end_time - start_time
 
-        if result and result[0]:
+        if result:
             best_slot, path_car, path_lobby, score = result
-            print(f"Best slot: Floor {best_slot[0]}, Pos ({best_slot[1]}, {best_slot[2]})")
+            print(f"Best slot: Floor {best_slot[0]}, Pos ({best_slot[1]+1}, {best_slot[2]+1})")
             print(f"Total combined cost (Car + Lobby + Floor offset): {score}")
             print(f"Execution Time: {exec_time:.4f} seconds")
 
@@ -260,9 +287,10 @@ if __name__ == "__main__":
                 for step in path_car:
                     print(f"  Floor {step[0]} → ({step[1]+1}, {step[2]+1})")
 
-                print("\nPath from Lobby → Slot:")
+                print("\nPath from Nearest Lobby → Slot:")
                 for step in path_lobby:
                     print(f"  Floor {step[0]} → ({step[1]+1}, {step[2]+1})")
         else:
             print("No valid slot found!")
             print(f"Execution Time: {exec_time:.4f} seconds")
+
