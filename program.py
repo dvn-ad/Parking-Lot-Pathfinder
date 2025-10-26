@@ -132,7 +132,7 @@ def find_positions(floors, symbol):
                     positions.append((z, y, x))
     return positions
 
-def find_best_slot(floors, algo="a_star", target_symbol="P"):
+def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None):
     cars = find_positions(floors, "C")
     slots = find_positions(floors, target_symbol)
     lobbies = find_positions(floors, "O")
@@ -151,7 +151,13 @@ def find_best_slot(floors, algo="a_star", target_symbol="P"):
         path_lobby = pathfind(floors, lobby, slot, algo)
         if not path_car or not path_lobby:
             continue
-        score = len(path_car) + len(path_lobby)
+
+        # floor distance penalty (favor closer floor)
+        floor_diff = abs(slot[0] - desired_floor) if desired_floor is not None else 0
+
+        # Weighted score: prioritize distance + floor diff
+        score = len(path_car) + len(path_lobby) + (floor_diff * 5)
+
         if score < best_score:
             best_score = score
             best_slot = slot
@@ -162,7 +168,7 @@ def find_best_slot(floors, algo="a_star", target_symbol="P"):
 # ---------- MAIN ----------
 if __name__ == "__main__":
     floors = load_floors("maps")
-    
+
     print("[1] A*")
     print("[2] Dijkstra")
     print("[3] BFS")
@@ -174,8 +180,14 @@ if __name__ == "__main__":
     print("[2] Ladies (L)")
     print("[3] Disability (D)")
     p_type = input("Choose type: ").strip()
-
     target_symbol = {"1": "P", "2": "L", "3": "D"}.get(p_type, "P")
+
+    # New: choose desired floor
+    print("\nEnter desired floor number (0 = ground):")
+    try:
+        desired_floor = int(input("Desired floor: ").strip())
+    except ValueError:
+        desired_floor = None
 
     show_path = input("\nShow paths? (y/n): ").strip().lower() == "y"
 
@@ -195,14 +207,15 @@ if __name__ == "__main__":
     for algo in algos:
         print(f"\n=== Running {algo.upper()} ===")
         start_time = time.time()
-        result = find_best_slot(floors, algo, target_symbol)
+        result = find_best_slot(floors, algo, target_symbol, desired_floor)
         end_time = time.time()
         exec_time = end_time - start_time
 
         if result:
             best_slot, path_car, path_lobby, score = result
             print(f"Best slot: Floor {best_slot[0]}, Pos ({best_slot[1]}, {best_slot[2]})")
-            print(f"Total combined cost (Car + Lobby): {score}")
+            print(f"Total combined cost (Car + Lobby + Floor offset): {score}")
+            print(f"Execution Time: {exec_time:.4f} seconds")
             if show_path:
                 print("\nPath from Car → Slot:")
                 for step in path_car:
@@ -212,5 +225,4 @@ if __name__ == "__main__":
                     print(f"  Floor {step[0]} → ({step[1]}, {step[2]})")
         else:
             print("No valid slot found!")
-
-        print(f"Execution Time: {exec_time:.4f} seconds")
+            print(f"Execution Time: {exec_time:.4f} seconds")
