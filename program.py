@@ -10,12 +10,37 @@ def read_csv_grid(filename):
     with open(filename, "r") as f:
         reader = csv.reader(f)
         return [row for row in reader]
-
+# =================================================================================================================================
+# def load_floors(folder):
+#     floors = []
+#     for file in sorted(os.listdir(folder)):
+#         if file.endswith(".csv"):
+#             floors.append(read_csv_grid(os.path.join(folder, file)))
+#     return floors
 def load_floors(folder):
     floors = []
-    for file in sorted(os.listdir(folder)):
-        if file.endswith(".csv"):
-            floors.append(read_csv_grid(os.path.join(folder, file)))
+    
+    # Get all csv files from the folder
+    csv_files = [f for f in os.listdir(folder) if f.endswith(".csv")]
+    
+    # Define a key function to extract the number from the filename
+    def get_sort_key(filename):
+        try:
+            # Assumes filename like "floor10.csv" or "map10.csv"
+            name_part = filename.split('.')[0]
+            # Extracts all digits (e.g., "10" from "floor10")
+            return int("".join(filter(str.isdigit, name_part)))
+        except ValueError:
+            # Fallback for any filenames without numbers
+            return 0
+            
+    # Sort the files using the numeric key
+    sorted_files = sorted(csv_files, key=get_sort_key)
+    
+    # Now load them in the correct order
+    for file in sorted_files:
+        floors.append(read_csv_grid(os.path.join(folder, file)))
+        
     return floors
 
 # ---------- PATHFINDING UTILS ----------
@@ -29,7 +54,7 @@ def can_move(floors, z, y, x, dy, dx):
     if cell == ">": return (dy, dx) == (0, 1)
     if cell == "<": return (dy, dx) == (0, -1)
     if cell == "^": return (dy, dx) == (-1, 0)
-    if cell == "v" or cell == "V": return (dy, dx) == (1, 0)
+    if cell in ["v", "V"]: return (dy, dx) == (1, 0)
     return False
 
 def get_neighbors(pos, floors):
@@ -138,8 +163,14 @@ def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None)
     lobbies = find_positions(floors, "O")
 
     if not cars or not slots or not lobbies:
-        print("missing C, target slot, or O")
+        print(f"[!] Missing required symbols (C, {target_symbol}, or O).")
         return None
+
+    # Warn if desired floor has no target symbol
+    if desired_floor is not None:
+        slots_on_floor = [s for s in slots if s[0] == desired_floor]
+        if not slots_on_floor:
+            print(f"[!] Warning: no '{target_symbol}' found on floor {desired_floor}. Searching all floors instead.")
 
     car = cars[0]
     lobby = lobbies[0]
@@ -152,10 +183,12 @@ def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None)
         if not path_car or not path_lobby:
             continue
 
-        # floor distance penalty (favor closer floor)
-        floor_diff = abs(slot[0] - desired_floor) if desired_floor is not None else 0
+        # Ensure path actually ends at slot (avoid overshoot through S)
+        if path_car[-1] != slot or path_lobby[-1] != slot:
+            continue
 
-        # Weighted score: prioritize distance + floor diff
+        # floor distance penalty (favor closer to desired floor)
+        floor_diff = abs(slot[0] - desired_floor) if desired_floor is not None else 0
         score = len(path_car) + len(path_lobby) + (floor_diff * 5)
 
         if score < best_score:
@@ -163,7 +196,13 @@ def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None)
             best_slot = slot
             best_path_car = path_car
             best_path_lobby = path_lobby
-    return best_slot, best_path_car, best_path_lobby, best_score
+
+    if best_slot:
+        cell_val = floors[best_slot[0]][best_slot[1]][best_slot[2]]
+        if cell_val != target_symbol:
+            print(f"[!] Warning: selected slot ({best_slot}) is '{cell_val}', not '{target_symbol}'.")
+
+    return best_slot, best_path_car, best_path_lobby, best_score if best_slot else (None, None, None, None)
 
 # ---------- MAIN ----------
 if __name__ == "__main__":
@@ -182,7 +221,6 @@ if __name__ == "__main__":
     p_type = input("Choose type: ").strip()
     target_symbol = {"1": "P", "2": "L", "3": "D"}.get(p_type, "P")
 
-    # New: choose desired floor
     print("\nEnter desired floor number (0 = ground):")
     try:
         desired_floor = int(input("Desired floor: ").strip())
@@ -211,15 +249,17 @@ if __name__ == "__main__":
         end_time = time.time()
         exec_time = end_time - start_time
 
-        if result:
+        if result and result[0]:
             best_slot, path_car, path_lobby, score = result
             print(f"Best slot: Floor {best_slot[0]}, Pos ({best_slot[1]}, {best_slot[2]})")
             print(f"Total combined cost (Car + Lobby + Floor offset): {score}")
             print(f"Execution Time: {exec_time:.4f} seconds")
+
             if show_path:
                 print("\nPath from Car → Slot:")
                 for step in path_car:
                     print(f"  Floor {step[0]} → ({step[1]}, {step[2]})")
+
                 print("\nPath from Lobby → Slot:")
                 for step in path_lobby:
                     print(f"  Floor {step[0]} → ({step[1]}, {step[2]})")
