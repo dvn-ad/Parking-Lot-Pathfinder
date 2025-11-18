@@ -19,15 +19,48 @@ footer{ margin-top:18px; color:#666; font-size:13px }
 .map-visual { margin-top:12px }
 .floor { margin-bottom:14px }
 .grid { border-collapse:collapse }
-.grid td { width:22px; height:22px; border:1px solid #eee; text-align:center; vertical-align:middle; padding:0 }
-.cell-inner{ position:relative; width:100%; height:100% }
-.symbol{ font-size:12px; color:#333 }
-.overlay{ position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-weight:700 }
+.grid td { width:28px; height:28px; border:1px solid #e6e6e6; text-align:center; vertical-align:middle; padding:0 }
+.cell-inner{ position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center }
+.symbol{ font-size:13px; font-weight:700 }
+.overlay{ position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-weight:900 }
 .overlay.car{ color: #d35400 }    /* orange */
 .overlay.lobby{ color: #2980b9 }  /* blue */
 .overlay.both{ color: #27ae60 }   /* green */
 
+/* Cell type coloring for more realistic map */
+.cell.road { background: #f8f9fa; color: #6c757d } /* light gray road */
+.cell.arrow { background: #e9ecef; color:#343a40 }
+.cell.car { background: #fff3e0; color:#d35400 }
+.cell.lobby { background: #fff8e1; color:#b36b00 }
+.cell.N, .cell.T { background: #f3e5f5; color:#6a1b9a }
+.cell.E, .cell.e { background: #e8f5e9; color:#1b5e20 }
+.cell.slot-empty { background: #e8f5ff; color:#0077b6 } /* light blue */
+.cell.slot-occupied { background: #fdecea; color:#b71c1c } /* pink/red */
+.cell.wall { background: #343a40; color: #fff }
+
 /* Highlight lobby path cells */
-.highlight-lobby { background: rgba(41,128,185,0.12); }
-.cell.highlight-lobby .symbol { color: #1f618d; font-weight:600 }
+.highlight-lobby { box-shadow: inset 0 0 0 2px rgba(41,128,185,0.12); }
+.cell.highlight-lobby .symbol { color: #1f618d; font-weight:800 }
+
+/* Hover tooltip */
+.cell .cell-inner[title]:hover::after {
+	content: attr(title);
+	position: absolute;
+	bottom: 110%;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0,0,0,0.8);
+	color: #fff;
+	padding: 6px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	white-space: nowrap;
+	z-index: 50;
+}
+
+/* Legend styling on result page */
+.map-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px }
+.map-legend .legend-item{ display:flex; align-items:center; gap:6px; font-size:13px }
+.map-legend .swatch{ width:16px; height:16px; border-radius:3px; border:1px solid rgba(0,0,0,0.06) }
+
 

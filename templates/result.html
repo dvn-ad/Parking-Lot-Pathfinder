@@ -34,6 +34,15 @@
                   {% set floor = floors[f_idx] %}
                   <div class="floor">
                     <h4>Floor {{ f_idx }}</h4>
+
+                    <div class="map-legend">
+                      <div class="legend-item"><span class="swatch" style="background:#f8f9fa;border:1px solid #e6e6e6"></span> Road</div>
+                      <div class="legend-item"><span class="swatch" style="background:#fff3e0"></span> Car start</div>
+                      <div class="legend-item"><span class="swatch" style="background:#fff8e1"></span> Lobby</div>
+                      <div class="legend-item"><span class="swatch" style="background:#e8f5ff"></span> Empty slot (goal)</div>
+                      <div class="legend-item"><span class="swatch" style="background:#fdecea"></span> Occupied slot</div>
+                    </div>
+
                     <table class="grid">
                       {% for y, row in enumerate(floor) %}
                         <tr>
@@ -41,11 +50,41 @@
                           {% set coord = (f_idx, y, x) %}
                           {% set overlay = item.overlays.get(coord) %}
                           {% set td_classes = 'cell' %}
+                          {# map symbol to class #}
+                          {% if cell == '.' %}
+                            {% set td_classes = td_classes + ' road' %}
+                          {% elif cell in ['>', '<', '^', 'v', 'V'] %}
+                            {% set td_classes = td_classes + ' arrow' %}
+                          {% elif cell == 'C' %}
+                            {% set td_classes = td_classes + ' car' %}
+                          {% elif cell == 'O' %}
+                            {% set td_classes = td_classes + ' lobby' %}
+                          {% elif cell == 'N' %}
+                            {% set td_classes = td_classes + ' N' %}
+                          {% elif cell == 'T' %}
+                            {% set td_classes = td_classes + ' T' %}
+                          {% elif cell == 'E' %}
+                            {% set td_classes = td_classes + ' E' %}
+                          {% elif cell == 'e' %}
+                            {% set td_classes = td_classes + ' e' %}
+                          {% elif cell in ['p','l','d'] %}
+                            {% set td_classes = td_classes + ' slot-empty' %}
+                          {% elif cell in ['P','L','D'] %}
+                            {% set td_classes = td_classes + ' slot-occupied' %}
+                          {% elif cell == '#' %}
+                            {% set td_classes = td_classes + ' wall' %}
+                          {% endif %}
+
                           {% if overlay and (overlay.highlight if overlay is mapping else overlay.get('highlight')) %}
                             {% set td_classes = td_classes + ' highlight-lobby' %}
                           {% endif %}
+
+                          {# tooltip text with symbol meaning and coords #}
+                          {% set meaning = '' %}
+                          {% if cell == '.' %}{% set meaning = 'Road' %}{% elif cell == 'C' %}{% set meaning = 'Car start' %}{% elif cell == 'O' %}{% set meaning = 'Lobby' %}{% elif cell in ['p','l','d'] %}{% set meaning = 'Empty slot' %}{% elif cell in ['P','L','D'] %}{% set meaning = 'Occupied slot' %}{% elif cell == 'N' %}{% set meaning = 'Ramp up (N)' %}{% elif cell == 'T' %}{% set meaning = 'Ramp down (T)' %}{% elif cell == 'E' %}{% set meaning = 'Entrance above (E)' %}{% elif cell == 'e' %}{% set meaning = 'Entrance below (e)' %}{% elif cell in ['>','<','^','v','V'] %}{% set meaning = 'Directional road' %}{% elif cell == '#' %}{% set meaning = 'Wall' %}{% endif %}
+
                           <td class="{{ td_classes }}">
-                            <div class="cell-inner">
+                            <div class="cell-inner" title="{{ meaning }} — ({{ f_idx }},{{ y }},{{ x }})">
                               <span class="symbol">{{ cell }}</span>
                               {% if overlay and overlay.char %}
                                 <span class="overlay {{ overlay.tag }}">{{ overlay.char }}</span>
