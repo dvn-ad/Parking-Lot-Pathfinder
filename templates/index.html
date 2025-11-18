@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Parking Finder</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Parking Lot Pathfinder — Web UI</h1>
+      <form action="/find" method="post">
+        <label>Algorithm:</label>
+        <select name="algorithm">
+          {% for key, label in algos.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label>Parking Type:</label>
+        <select name="parking_type">
+          <option value="P">Normal (P)</option>
+          <option value="L">Ladies (L)</option>
+          <option value="D">Disability (D)</option>
+        </select>
+
+        <label>Desired floor (optional):</label>
+        <input type="number" name="desired_floor" min="0" placeholder="e.g. 0" />
+
+        <label>Preference:</label>
+        <div class="radio-row">
+          <label><input type="radio" name="preference" value="lobby" checked /> Closer to Lobby</label>
+          <label><input type="radio" name="preference" value="car" /> Closer to Car</label>
+        </div>
+
+        <label><input type="checkbox" name="show_path" /> Show paths</label>
+
+        <div class="actions">
+          <button type="submit">Find Best Slot</button>
+        </div>
+      </form>
+
+      <footer>
+        <small>Maps are loaded from the `maps/` folder in the project.</small>
+      </footer>
+    </div>
+  </body>
+</html>

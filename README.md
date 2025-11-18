@@ -1,3 +1,33 @@
+# Parking Lot Pathfinder — Web UI
+
+This repository contains a simple Flask-based web UI wrapper around the existing `program.py` pathfinding and parking-slot selection logic.
+
+How to run (Windows `cmd.exe`):
+
+1. Create a virtual environment (optional but recommended):
+
+```
+python -m venv venv
+venv\Scripts\activate
+```
+
+2. Install requirements:
+
+```
+pip install -r requirements.txt
+```
+
+3. Run the app:
+
+```
+python app.py
+```
+
+Open a browser at `http://127.0.0.1:5000/`.
+
+Notes:
+- Maps are loaded from the `maps/` folder (CSV files included in the repo).
+- The UI exposes algorithm choice, parking type, desired floor and preference.
 # Parking Lot Pathfinder
 
 **Parking Lot Pathfinder** is a program that simulates an **optimal parking slot finder** using classic **pathfinding algorithms** — **A***, **Dijkstra**, **BFS**, and **Greedy BFS** — to determine the most efficient route inside a **multi-floor parking building**.

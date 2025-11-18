@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Results — Parking Finder</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Results</h1>
+
+      {% for r in results %}
+        <section class="result">
+          <h2>{{ r.algo }}</h2>
+          {% if not r.best_slot %}
+            <p class="error">No valid slot found.</p>
+          {% else %}
+            <p><strong>Best slot:</strong> Floor {{ r.best_slot[0] }}, Position ({{ r.best_slot[1]+1 }}, {{ r.best_slot[2]+1 }})</p>
+            <p><strong>Score:</strong> {{ r.score }}</p>
+
+            {% if show_path %}
+              <div class="paths">
+                <div>
+                  <h3>Path from Car → Slot</h3>
+                  <ol>
+                    {% for s in r.path_car %}
+                      <li>Floor {{ s[0] }} — ({{ s[1]+1 }}, {{ s[2]+1 }})</li>
+                    {% endfor %}
+                  </ol>
+                </div>
+                <div>
+                  <h3>Path from Nearest Lobby → Slot</h3>
+                  <ol>
+                    {% for s in r.path_lobby %}
+                      <li>Floor {{ s[0] }} — ({{ s[1]+1 }}, {{ s[2]+1 }})</li>
+                    {% endfor %}
+                  </ol>
+                </div>
+              </div>
+            {% endif %}
+          {% endif %}
+        </section>
+      {% endfor %}
+
+      <p><a href="/">← Back</a></p>
+    </div>
+  </body>
+</html>
