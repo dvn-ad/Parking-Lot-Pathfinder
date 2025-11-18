@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 from program import load_floors, find_best_slot
+import time
 
 app = Flask(__name__, static_folder="static")
 
@@ -40,7 +41,12 @@ def find():
 
     results = []
     for a in algos:
+        start_time = time.time()
         result = find_best_slot(floors, a, ptype, desired_floor, w_lobby, w_car)
+        end_time = time.time()
+        exec_time = end_time - start_time
+        exec_time_str = f"{exec_time:.4f}s"
+
         if result:
             best_slot, path_car, path_lobby, score = result
             results.append({
@@ -49,14 +55,74 @@ def find():
                 'path_car': path_car,
                 'path_lobby': path_lobby,
                 'score': score,
+                'exec_time': exec_time,
+                'exec_time_str': exec_time_str,
             })
         else:
             results.append({
                 'algo': ALGO_CHOICES.get(a, a),
                 'best_slot': None,
+                'exec_time': exec_time,
+                'exec_time_str': exec_time_str,
             })
 
-    return render_template('result.html', results=results, show_path=show_path)
+    # Build overlays for map visualization: for each result, create dict of overlay arrows
+    def path_to_overlays(path, tag):
+        # returns dict[(z,y,x)] = {'char': arrow, 'tag': tag}
+        overlays = {}
+        if not path:
+            return overlays
+        for i in range(len(path)-1):
+            z1,y1,x1 = path[i]
+            z2,y2,x2 = path[i+1]
+            if z1 == z2:
+                if y2 == y1 and x2 == x1+1:
+                    arrow = '→'
+                elif y2 == y1 and x2 == x1-1:
+                    arrow = '←'
+                elif y2 == y1+1 and x2 == x1:
+                    arrow = '↓'
+                elif y2 == y1-1 and x2 == x1:
+                    arrow = '↑'
+                else:
+                    arrow = '·'
+                overlays[(z1,y1,x1)] = {'char': arrow, 'tag': tag}
+            else:
+                # vertical move: mark at source with up/down arrow
+                if z2 == z1+1:
+                    overlays[(z1,y1,x1)] = {'char': '⇑', 'tag': tag}
+                else:
+                    overlays[(z1,y1,x1)] = {'char': '⇓', 'tag': tag}
+        return overlays
+
+    results_with_overlays = []
+    for r in results:
+        overlays = {}
+        if r.get('path_car'):
+            overlays.update(path_to_overlays(r['path_car'], 'car'))
+        if r.get('path_lobby'):
+            # Instead of arrows for lobby path, mark the path cells for highlighting.
+            for k,v in path_to_overlays(r['path_lobby'], 'lobby').items():
+                # If a car arrow already exists at this cell, keep the car arrow
+                # and add a highlight flag so both visuals appear (arrow + blue background).
+                if k in overlays:
+                    overlays[k]['highlight'] = True
+                else:
+                    overlays[k] = {'char': None, 'tag': 'lobby', 'highlight': True}
+
+        # Determine which floor indices are used by overlays (and include slot floor as fallback)
+        floors_used = sorted({coord[0] for coord in overlays.keys()})
+        if not floors_used and r.get('best_slot'):
+            floors_used = [r['best_slot'][0]]
+
+        results_with_overlays.append({'result': r, 'overlays': overlays, 'floors_used': floors_used})
+
+    # If the user requested all algorithms, sort results by execution time (fastest first)
+    if algo == 'all' and len(results_with_overlays) > 1:
+        results_with_overlays.sort(key=lambda it: (it['result'].get('exec_time') if it['result'].get('exec_time') is not None else float('inf')))
+
+    # pass Python's enumerate into Jinja context for indexing floors
+    return render_template('result.html', results=results_with_overlays, show_path=show_path, floors=floors, enumerate=enumerate)
 
 
 if __name__ == '__main__':

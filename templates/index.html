@@ -9,6 +9,20 @@
   <body>
     <div class="container">
       <h1>Parking Lot Pathfinder — Web UI</h1>
+      <section class="legend">
+        <h3>Legend & Rules</h3>
+        <ul>
+          <li><strong>.</strong> : Road (only walkable tile)</li>
+          <li><strong>> &lt; ^ v</strong> : Directional road tiles (one-way)</li>
+          <li><strong>C</strong> : Car starting position</li>
+          <li><strong>O</strong> : Lobby (not a through-road)</li>
+          <li><strong>N</strong> : Naik (ramp up) — must have <strong>E</strong> above</li>
+          <li><strong>T</strong> : Turun (ramp down) — must have <strong>e</strong> below</li>
+          <li><strong>P/L/D</strong> : Occupied slot (blocked)</li>
+          <li><strong>p/l/d</strong> : Empty slot (can be entered only as goal)</li>
+          <li>Paths are shown on the map as arrows (← → ↑ ↓). Lobby/entrance/slots are not used as roads.</li>
+        </ul>
+      </section>
       <form action="/find" method="post">
         <label>Algorithm:</label>
         <select name="algorithm">

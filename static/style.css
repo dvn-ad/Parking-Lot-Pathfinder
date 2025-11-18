@@ -10,3 +10,24 @@ button:hover{ background:#0063b1 }
 .result{ border-top:1px dashed #ddd; padding-top:12px; margin-top:12px }
 .error{ color:#b00020 }
 footer{ margin-top:18px; color:#666; font-size:13px }
+
+/* Legend */
+.legend ul{ list-style:none; padding:0; margin:8px 0 16px 0 }
+.legend li{ margin:4px 0 }
+
+/* Map grid */
+.map-visual { margin-top:12px }
+.floor { margin-bottom:14px }
+.grid { border-collapse:collapse }
+.grid td { width:22px; height:22px; border:1px solid #eee; text-align:center; vertical-align:middle; padding:0 }
+.cell-inner{ position:relative; width:100%; height:100% }
+.symbol{ font-size:12px; color:#333 }
+.overlay{ position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-weight:700 }
+.overlay.car{ color: #d35400 }    /* orange */
+.overlay.lobby{ color: #2980b9 }  /* blue */
+.overlay.both{ color: #27ae60 }   /* green */
+
+/* Highlight lobby path cells */
+.highlight-lobby { background: rgba(41,128,185,0.12); }
+.cell.highlight-lobby .symbol { color: #1f618d; font-weight:600 }
+

@@ -10,9 +10,17 @@
     <div class="container">
       <h1>Results</h1>
 
-      {% for r in results %}
+      {% for item in results %}
+        {% set r = item.result %}
         <section class="result">
-          <h2>{{ r.algo }}</h2>
+          <h2>
+            {% if results|length > 1 %}
+              {{ loop.index }}. {{ r.algo }}
+            {% else %}
+              {{ r.algo }}
+            {% endif %}
+            <small style="margin-left:12px;color:#666">Execution: {{ r.exec_time_str }}</small>
+          </h2>
           {% if not r.best_slot %}
             <p class="error">No valid slot found.</p>
           {% else %}
@@ -20,23 +28,36 @@
             <p><strong>Score:</strong> {{ r.score }}</p>
 
             {% if show_path %}
-              <div class="paths">
-                <div>
-                  <h3>Path from Car → Slot</h3>
-                  <ol>
-                    {% for s in r.path_car %}
-                      <li>Floor {{ s[0] }} — ({{ s[1]+1 }}, {{ s[2]+1 }})</li>
-                    {% endfor %}
-                  </ol>
-                </div>
-                <div>
-                  <h3>Path from Nearest Lobby → Slot</h3>
-                  <ol>
-                    {% for s in r.path_lobby %}
-                      <li>Floor {{ s[0] }} — ({{ s[1]+1 }}, {{ s[2]+1 }})</li>
-                    {% endfor %}
-                  </ol>
-                </div>
+              <div class="map-visual">
+                <h3>Map with Paths (per floor)</h3>
+                {% for f_idx in item.floors_used %}
+                  {% set floor = floors[f_idx] %}
+                  <div class="floor">
+                    <h4>Floor {{ f_idx }}</h4>
+                    <table class="grid">
+                      {% for y, row in enumerate(floor) %}
+                        <tr>
+                        {% for x, cell in enumerate(row) %}
+                          {% set coord = (f_idx, y, x) %}
+                          {% set overlay = item.overlays.get(coord) %}
+                          {% set td_classes = 'cell' %}
+                          {% if overlay and (overlay.highlight if overlay is mapping else overlay.get('highlight')) %}
+                            {% set td_classes = td_classes + ' highlight-lobby' %}
+                          {% endif %}
+                          <td class="{{ td_classes }}">
+                            <div class="cell-inner">
+                              <span class="symbol">{{ cell }}</span>
+                              {% if overlay and overlay.char %}
+                                <span class="overlay {{ overlay.tag }}">{{ overlay.char }}</span>
+                              {% endif %}
+                            </div>
+                          </td>
+                        {% endfor %}
+                        </tr>
+                      {% endfor %}
+                    </table>
+                  </div>
+                {% endfor %}
               </div>
             {% endif %}
           {% endif %}

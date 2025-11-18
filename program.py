@@ -34,7 +34,11 @@ def heuristic(a, b):
 
 def can_move(floors, z, y, x, dy, dx):
     cell = floors[z][y][x]
-    if cell in [".", "C", "P", "L", "D", "O", "S"]:
+    # Passable source symbols (cells that may allow exiting horizontally).
+    # Only '.' (road), the car start 'C', lobby 'O' (so lobby can start a search),
+    # and vertical markers 'N'/'T' (and arrows) allow exits. Entrances 'E'/'e'
+    # and parking slots are NOT horizontal sources for movement.
+    if cell in [".", "C", "O", "N", "T"]:
         return True
     if cell == ">": return (dy, dx) == (0, 1)
     if cell == "<": return (dy, dx) == (0, -1)
@@ -42,7 +46,7 @@ def can_move(floors, z, y, x, dy, dx):
     if cell in ["v", "V"]: return (dy, dx) == (1, 0)
     return False
 
-def get_neighbors(pos, floors):
+def get_neighbors(pos, floors, goal=None):
     z, y, x = pos
     neighbors = []
     height, width = len(floors[z]), len(floors[z][0])
@@ -51,14 +55,33 @@ def get_neighbors(pos, floors):
     for dy, dx in directions:
         ny, nx = y + dy, x + dx
         if 0 <= ny < height and 0 <= nx < width:
-            if floors[z][ny][nx] != "#" and can_move(floors, z, y, x, dy, dx):
+            dest = floors[z][ny][nx]
+            # skip walls
+            if dest == "#":
+                continue
+            # Horizontal movement rules: ONLY allow entering road tiles ('.' or directional arrows)
+            # or the exact goal cell. Do NOT treat parking slots, lobbies, or entrances as roads.
+            road_tiles = {".", ">", "<", "^", "v", "V", "C"}
+            if (z, ny, nx) != goal and dest not in road_tiles:
+                # destination is not a road and not the goal -> cannot move into it
+                continue
+            # check source allows exiting in this direction
+            if can_move(floors, z, y, x, dy, dx):
                 neighbors.append((z, ny, nx))
-
-    if floors[z][y][x] == "S":
-        if z + 1 < len(floors) and floors[z+1][y][x] == "S":
-            neighbors.append((z+1, y, x))
-        if z - 1 >= 0 and floors[z-1][y][x] == "S":
-            neighbors.append((z-1, y, x))
+    # Vertical movement rules using new symbols:
+    # 'N' = naik (up): can move up to floor z+1 if that cell is 'E' (entrance on upper floor)
+    # 'T' = turun (down): can move down to floor z-1 if that cell is 'e' (entrance on lower floor)
+    # 'E' on an upper floor can move down to a matching 'N' below
+    # 'e' on a lower floor can move up to a matching 'T' above
+    cur = floors[z][y][x]
+    # Up from 'N' -> 'E'
+    if cur == 'N' and z + 1 < len(floors) and floors[z+1][y][x] == 'E':
+        neighbors.append((z+1, y, x))
+    # Down from 'T' -> 'e'
+    if cur == 'T' and z - 1 >= 0 and floors[z-1][y][x] == 'e':
+        neighbors.append((z-1, y, x))
+    # Note: Entrance cells 'E' and 'e' do NOT create vertical moves to 'N'/'T'.
+    # Vertical movement is only allowed from 'N' -> 'E' (up) and 'T' -> 'e' (down).
     return neighbors
 
 # ---------- PATHFINDING ALGORITHMS ----------
@@ -88,7 +111,7 @@ def a_star(floors, start, goal):
                 current = came_from[current]
             path.append(start)
             return path[::-1]
-        for neighbor in get_neighbors(current, floors):
+        for neighbor in get_neighbors(current, floors, goal):
             tentative_g = g_score[current] + 1
             if tentative_g < g_score.get(neighbor, float("inf")):
                 came_from[neighbor] = current
@@ -110,7 +133,7 @@ def dijkstra(floors, start, goal):
                 current = came_from[current]
             path.append(start)
             return path[::-1]
-        for neighbor in get_neighbors(current, floors):
+        for neighbor in get_neighbors(current, floors, goal):
             new_cost = cost + 1
             if new_cost < dist.get(neighbor, float("inf")):
                 dist[neighbor] = new_cost
@@ -129,7 +152,7 @@ def bfs(floors, start, goal):
                 path.append(current)
                 current = came_from[current]
             return path[::-1]
-        for neighbor in get_neighbors(current, floors):
+        for neighbor in get_neighbors(current, floors, goal):
             if neighbor not in came_from:
                 came_from[neighbor] = current
                 queue.append(neighbor)
@@ -151,7 +174,7 @@ def greedy_bfs(floors, start, goal):
                 current = came_from[current]
             return path[::-1]
 
-        for neighbor in get_neighbors(current, floors):
+        for neighbor in get_neighbors(current, floors, goal):
             if neighbor not in came_from:
                 came_from[neighbor] = current
                 priority = heuristic(neighbor, goal)
@@ -171,10 +194,12 @@ def find_positions(floors, symbol):
 
 def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None, w_lobby=2, w_car=1):
     cars = find_positions(floors, "C")
-    slots = find_positions(floors, target_symbol)
-    
+    # target_symbol is provided as uppercase ('P','L','D'); available slots are lowercase
+    target_lower = target_symbol.lower()
+    slots = find_positions(floors, target_lower)
+
     if not cars or not slots:
-        print(f"[!] Missing required symbols (C or {target_symbol}).")
+        print(f"[!] Missing required symbols (C or {target_lower}).")
         return None
 
     car = cars[0]
