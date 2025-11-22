@@ -32,13 +32,19 @@ def heuristic(a, b):
     # Manhattan distance for 3D grid
     return abs(a[0]-b[0]) + abs(a[1]-b[1]) + abs(a[2]-b[2])
 
-def can_move(floors, z, y, x, dy, dx):
+def can_move(floors, z, y, x, dy, dx, is_pedestrian=False):
     cell = floors[z][y][x]
+    
+    # Pedestrians can move freely from any walkable tile (except walls)
+    # They ignore one-way signs.
+    if is_pedestrian:
+        return True
+
     # Passable source symbols (cells that may allow exiting horizontally).
     # Only '.' (road), the car start 'C', lobby 'O' (so lobby can start a search),
     # and vertical markers 'N'/'T' (and arrows) allow exits. Entrances 'E'/'e'
-    # and parking slots are NOT horizontal sources for movement.
-    if cell in [".", "C", "O", "N", "T"]:
+    # allow exiting to the floor.
+    if cell in [".", "C", "O", "N", "T", "E", "e"]:
         return True
     if cell == ">": return (dy, dx) == (0, 1)
     if cell == "<": return (dy, dx) == (0, -1)
@@ -46,7 +52,7 @@ def can_move(floors, z, y, x, dy, dx):
     if cell in ["v", "V"]: return (dy, dx) == (1, 0)
     return False
 
-def get_neighbors(pos, floors, goal=None):
+def get_neighbors(pos, floors, goal=None, is_pedestrian=False):
     z, y, x = pos
     neighbors = []
     height, width = len(floors[z]), len(floors[z][0])
@@ -61,12 +67,12 @@ def get_neighbors(pos, floors, goal=None):
                 continue
             # Horizontal movement rules: ONLY allow entering road tiles ('.' or directional arrows)
             # or the exact goal cell. Do NOT treat parking slots, lobbies, or entrances as roads.
-            road_tiles = {".", ">", "<", "^", "v", "V", "C"}
+            road_tiles = {".", ">", "<", "^", "v", "V", "C", "N", "T"}
             if (z, ny, nx) != goal and dest not in road_tiles:
                 # destination is not a road and not the goal -> cannot move into it
                 continue
             # check source allows exiting in this direction
-            if can_move(floors, z, y, x, dy, dx):
+            if can_move(floors, z, y, x, dy, dx, is_pedestrian):
                 neighbors.append((z, ny, nx))
     # Vertical movement rules using new symbols:
     # 'N' = naik (up): can move up to floor z+1 if that cell is 'E' (entrance on upper floor)
@@ -77,6 +83,8 @@ def get_neighbors(pos, floors, goal=None):
     # Up from 'N' -> 'E'
     if cur == 'N' and z + 1 < len(floors) and floors[z+1][y][x] == 'E':
         neighbors.append((z+1, y, x))
+
+        neighbors.append((z+1, y, x))
     # Down from 'T' -> 'e'
     if cur == 'T' and z - 1 >= 0 and floors[z-1][y][x] == 'e':
         neighbors.append((z-1, y, x))
@@ -85,18 +93,18 @@ def get_neighbors(pos, floors, goal=None):
     return neighbors
 
 # ---------- PATHFINDING ALGORITHMS ----------
-def pathfind(floors, start, goal, algo="a_star"):
+def pathfind(floors, start, goal, algo="a_star", is_pedestrian=False):
     if algo == "bfs":
-        return bfs(floors, start, goal)
+        return bfs(floors, start, goal, is_pedestrian)
     elif algo == "dijkstra":
-        return dijkstra(floors, start, goal)
+        return dijkstra(floors, start, goal, is_pedestrian)
     # *** DIUBAH: Sekarang memanggil "greedy_bfs" ***
     elif algo == "greedy_bfs": 
-        return greedy_bfs(floors, start, goal)
+        return greedy_bfs(floors, start, goal, is_pedestrian)
     else:
-        return a_star(floors, start, goal)
+        return a_star(floors, start, goal, is_pedestrian)
 
-def a_star(floors, start, goal):
+def a_star(floors, start, goal, is_pedestrian=False):
     open_set = []
     heapq.heappush(open_set, (0, start))
     came_from = {}
@@ -111,7 +119,7 @@ def a_star(floors, start, goal):
                 current = came_from[current]
             path.append(start)
             return path[::-1]
-        for neighbor in get_neighbors(current, floors, goal):
+        for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             tentative_g = g_score[current] + 1
             if tentative_g < g_score.get(neighbor, float("inf")):
                 came_from[neighbor] = current
@@ -120,7 +128,7 @@ def a_star(floors, start, goal):
                 heapq.heappush(open_set, (f_score, neighbor))
     return None
 
-def dijkstra(floors, start, goal):
+def dijkstra(floors, start, goal, is_pedestrian=False):
     pq = [(0, start)]
     came_from = {}
     dist = {start: 0}
@@ -133,7 +141,7 @@ def dijkstra(floors, start, goal):
                 current = came_from[current]
             path.append(start)
             return path[::-1]
-        for neighbor in get_neighbors(current, floors, goal):
+        for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             new_cost = cost + 1
             if new_cost < dist.get(neighbor, float("inf")):
                 dist[neighbor] = new_cost
@@ -141,7 +149,7 @@ def dijkstra(floors, start, goal):
                 heapq.heappush(pq, (new_cost, neighbor))
     return None
 
-def bfs(floors, start, goal):
+def bfs(floors, start, goal, is_pedestrian=False):
     queue = deque([start])
     came_from = {start: None}
     while queue:
@@ -152,14 +160,14 @@ def bfs(floors, start, goal):
                 path.append(current)
                 current = came_from[current]
             return path[::-1]
-        for neighbor in get_neighbors(current, floors, goal):
+        for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             if neighbor not in came_from:
                 came_from[neighbor] = current
                 queue.append(neighbor)
     return None
 
 # *** DIUBAH: Menggantikan DFS dengan Greedy BFS ***
-def greedy_bfs(floors, start, goal):
+def greedy_bfs(floors, start, goal, is_pedestrian=False):
     open_set = []
     heapq.heappush(open_set, (heuristic(start, goal), start))
     came_from = {start: None} 
@@ -174,7 +182,7 @@ def greedy_bfs(floors, start, goal):
                 current = came_from[current]
             return path[::-1]
 
-        for neighbor in get_neighbors(current, floors, goal):
+        for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             if neighbor not in came_from:
                 came_from[neighbor] = current
                 priority = heuristic(neighbor, goal)
@@ -212,14 +220,14 @@ def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None,
         if not lobbies_same_floor:
             continue
 
-        path_car = pathfind(floors, car, slot, algo)
+        path_car = pathfind(floors, car, slot, algo, is_pedestrian=False)
         if not path_car or path_car[-1] != slot:
             continue
 
         best_lobby_path = None
         best_lobby_len = float("inf")
         for lobby in lobbies_same_floor:
-            path_l = pathfind(floors, lobby, slot, algo)
+            path_l = pathfind(floors, lobby, slot, algo, is_pedestrian=True)
             if path_l and path_l[-1] == slot and len(path_l) < best_lobby_len:
                 best_lobby_len = len(path_l)
                 best_lobby_path = path_l

@@ -39,8 +39,8 @@ footer{ margin-top:18px; color:#666; font-size:13px }
 .cell.wall { background: #343a40; color: #fff }
 
 /* Highlight lobby path cells */
-.highlight-lobby { box-shadow: inset 0 0 0 2px rgba(41,128,185,0.12); }
-.cell.highlight-lobby .symbol { color: #1f618d; font-weight:800 }
+.highlight-lobby { }
+.cell.highlight-lobby .symbol { }
 
 /* Hover tooltip */
 .cell .cell-inner[title]:hover::after {
@@ -59,7 +59,8 @@ footer{ margin-top:18px; color:#666; font-size:13px }
 }
 
 /* Legend styling on result page */
-.map-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px }
+.map-container { display: flex; align-items: flex-start; gap: 20px; }
+.map-legend{ display:flex; flex-direction: column; gap:8px; margin-bottom:0; min-width: 150px; }
 .map-legend .legend-item{ display:flex; align-items:center; gap:6px; font-size:13px }
 .map-legend .swatch{ width:16px; height:16px; border-radius:3px; border:1px solid rgba(0,0,0,0.06) }
 

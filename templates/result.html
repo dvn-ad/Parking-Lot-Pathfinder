@@ -35,14 +35,7 @@
                   <div class="floor">
                     <h4>Floor {{ f_idx }}</h4>
 
-                    <div class="map-legend">
-                      <div class="legend-item"><span class="swatch" style="background:#f8f9fa;border:1px solid #e6e6e6"></span> Road</div>
-                      <div class="legend-item"><span class="swatch" style="background:#fff3e0"></span> Car start</div>
-                      <div class="legend-item"><span class="swatch" style="background:#fff8e1"></span> Lobby</div>
-                      <div class="legend-item"><span class="swatch" style="background:#e8f5ff"></span> Empty slot (goal)</div>
-                      <div class="legend-item"><span class="swatch" style="background:#fdecea"></span> Occupied slot</div>
-                    </div>
-
+                    <div class="map-container">
                     <table class="grid">
                       {% for y, row in enumerate(floor) %}
                         <tr>
@@ -87,7 +80,29 @@
                             <div class="cell-inner" title="{{ meaning }} — ({{ f_idx }},{{ y }},{{ x }})">
                               <span class="symbol">{{ cell }}</span>
                               {% if overlay and overlay.char %}
-                                <span class="overlay {{ overlay.tag }}">{{ overlay.char }}</span>
+                                <span class="overlay {{ overlay.tag }}">
+                                  {% if overlay.char in ['right', 'left', 'up', 'down', 'up_floor', 'down_floor', 'dot', 'circle'] %}
+                                    {% if overlay.char == 'right' %}
+                                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M4 10h10v-4l6 6-6 6v-4h-10z" /></svg>
+                                    {% elif overlay.char == 'left' %}
+                                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 10h-10v-4l-6 6 6 6v-4h10z" /></svg>
+                                    {% elif overlay.char == 'up' %}
+                                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 20v-10h-4l6-6 6 6h-4v10z" /></svg>
+                                    {% elif overlay.char == 'down' %}
+                                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 4v10h-4l6 6 6-6h-4v-10z" /></svg>
+                                    {% elif overlay.char == 'up_floor' %}
+                                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-4h2v-6h3l-4-4-4 4h3z"/></svg>
+                                    {% elif overlay.char == 'down_floor' %}
+                                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1 4h-2v6h-3l4 4 4-4h-3z"/></svg>
+                                    {% elif overlay.char == 'dot' %}
+                                      <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+                                    {% elif overlay.char == 'circle' %}
+                                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg>
+                                    {% endif %}
+                                  {% else %}
+                                    {{ overlay.char }}
+                                  {% endif %}
+                                </span>
                               {% endif %}
                             </div>
                           </td>
@@ -95,6 +110,25 @@
                         </tr>
                       {% endfor %}
                     </table>
+                    <div class="map-legend">
+                      <div class="legend-item"><span class="swatch" style="background:#343a40;color:#fff"></span> Wall</div>
+                      <div class="legend-item"><span class="swatch" style="background:#f8f9fa;border:1px solid #e6e6e6"></span> Road</div>
+                      <div class="legend-item"><span class="swatch" style="background:#fff3e0"></span> Car start</div>
+                      <div class="legend-item"><span class="swatch" style="background:#fff8e1"></span> Lobby</div>
+                      <div class="legend-item"><span class="swatch" style="background:#e8f5ff"></span> Empty slot (goal)</div>
+                      <div class="legend-item"><span class="swatch" style="background:#fdecea"></span> Occupied slot</div>
+                      <div class="legend-item">
+                        <span class="swatch" style="border:none; background:transparent; color:#d35400; display:flex; align-items:center; justify-content:center;">
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h10v-4l6 6-6 6v-4h-10z" /></svg>
+                        </span> Car Path<br>(Car -> Empty Slot)
+                      </div>
+                      <div class="legend-item">
+                        <span class="swatch" style="border:none; background:transparent; color:#2980b9; display:flex; align-items:center; justify-content:center;">
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h10v-4l6 6-6 6v-4h-10z" /></svg>
+                        </span> Pedestrian Path<br>(Empty Slot -> Lobby)
+                      </div>
+                    </div>
+                    </div>
                   </div>
                 {% endfor %}
               </div>

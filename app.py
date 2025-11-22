@@ -53,6 +53,10 @@ def find():
 
             if result:
                 best_slot, path_car, path_lobby, score = result
+                # Reverse lobby path so it goes from Slot -> Lobby as requested
+                if path_lobby:
+                    path_lobby = path_lobby[::-1]
+                
                 results.append({
                     'algo': ALGO_CHOICES.get(a, a),
                     'best_slot': best_slot,
@@ -81,22 +85,22 @@ def find():
                 z2,y2,x2 = path[i+1]
                 if z1 == z2:
                     if y2 == y1 and x2 == x1+1:
-                        arrow = '→'
+                        arrow = 'right'
                     elif y2 == y1 and x2 == x1-1:
-                        arrow = '←'
+                        arrow = 'left'
                     elif y2 == y1+1 and x2 == x1:
-                        arrow = '↓'
+                        arrow = 'down'
                     elif y2 == y1-1 and x2 == x1:
-                        arrow = '↑'
+                        arrow = 'up'
                     else:
-                        arrow = '·'
+                        arrow = 'dot'
                     overlays[(z1,y1,x1)] = {'char': arrow, 'tag': tag}
                 else:
                     # vertical move: mark at source with up/down arrow
                     if z2 == z1+1:
-                        overlays[(z1,y1,x1)] = {'char': '⇑', 'tag': tag}
+                        overlays[(z1,y1,x1)] = {'char': 'up_floor', 'tag': tag}
                     else:
-                        overlays[(z1,y1,x1)] = {'char': '⇓', 'tag': tag}
+                        overlays[(z1,y1,x1)] = {'char': 'down_floor', 'tag': tag}
             return overlays
 
         results_with_overlays = []
@@ -105,14 +109,22 @@ def find():
             if r.get('path_car'):
                 overlays.update(path_to_overlays(r['path_car'], 'car'))
             if r.get('path_lobby'):
-                # Instead of arrows for lobby path, mark the path cells for highlighting.
-                for k,v in path_to_overlays(r['path_lobby'], 'lobby').items():
+                # Use arrows for lobby path as well.
+                lobby_overlays = path_to_overlays(r['path_lobby'], 'lobby')
+
+                # Change the start of the path (the slot) to a circle
+                if r['path_lobby']:
+                    slot_pos = r['path_lobby'][0]
+                    if slot_pos in lobby_overlays:
+                        lobby_overlays[slot_pos]['char'] = 'circle'
+
+                for k,v in lobby_overlays.items():
                     # If a car arrow already exists at this cell, keep the car arrow
-                    # and add a highlight flag so both visuals appear (arrow + blue background).
+                    # but change the tag to 'both' to indicate overlap.
                     if k in overlays:
-                        overlays[k]['highlight'] = True
+                        overlays[k]['tag'] = 'both'
                     else:
-                        overlays[k] = {'char': None, 'tag': 'lobby', 'highlight': True}
+                        overlays[k] = v
 
             # Determine which floor indices are used by overlays (and include slot floor as fallback)
             floors_used = sorted({coord[0] for coord in overlays.keys()})
