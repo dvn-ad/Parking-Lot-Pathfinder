@@ -1,113 +1,69 @@
 # Parking Lot Pathfinder
 
-**Parking Lot Pathfinder** is a pathfinding simulation tool that finds the optimal parking slot in a multi-floor parking building. It uses classic algorithms (**A***, **Dijkstra**, **BFS**, **Greedy BFS**) to determine the most efficient route.
-
-This project includes both a **Web UI** (Flask-based) and a **CLI** version.
-
----
+A web-based application that helps users find the optimal parking slot in a multi-story parking complex. It utilizes various pathfinding algorithms to calculate the best route based on user preferences, such as proximity to the lobby or the car entrance.
 
 ## Features
 
-- **Algorithms**: A*, Dijkstra, BFS, Greedy BFS.
-- **Multi-floor Support**: Navigates through multiple floors using stairs/elevators.
-- **Parking Types**: Normal, Ladies, Disability.
-- **Optimization**: Considers distance from entry (Car), distance to Lobby, and floor preference.
-- **Visualization**: Web interface to visualize the path and results.
-
----
-
-## Folder Structure
-
-```
-.
-├── app.py              # Flask Web Application
-├── program.py          # Core Pathfinding Logic & CLI
-├── requirements.txt    # Python dependencies
-├── maps/               # CSV Map files (Floor layouts)
-│   ├── floor0.csv
-│   ├── floor1.csv
-│   └── ...
-├── static/
-│   └── style.css       # Web UI Styles
-└── templates/
-    ├── index.html      # Input Form
-    └── result.html     # Results Page
-```
-
----
+- **Multiple Pathfinding Algorithms**: Choose between A*, Dijkstra, BFS, and Greedy BFS.
+- **Parking Types**: Support for Normal (P), Ladies (L), and Disability (D) parking slots.
+- **User Preferences**:
+    -   Prioritize parking closer to the **Lobby** or the **Car Entrance**.
+    -   Specify a **Desired Floor**.
+- **Visual Navigation**: Displays the path from the car entrance to the parking slot and from the slot to the nearest lobby on a grid map.
+- **Performance Comparison**: Option to run all algorithms simultaneously to compare execution time and path efficiency.
 
 ## Installation
 
-1. **Create a virtual environment** (optional but recommended):
-   ```cmd
-   python -m venv venv
-   venv\Scripts\activate
-   ```
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/dvn-ad/Parking-Lot-Pathfinder.git
+    cd Parking-Lot-Pathfinder
+    ```
 
-2. **Install dependencies**:
-   ```cmd
-   pip install -r requirements.txt
-   ```
-
----
+2.  Install the required dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 ## Usage
 
-### Option 1: Web UI (Recommended)
+1.  Start the Flask application:
+    ```bash
+    python app.py
+    ```
 
-1. Run the Flask application:
-   ```cmd
-   python app.py
-   ```
-2. Open your browser and navigate to: `http://127.0.0.1:5000/`
-3. Select the algorithm, parking type, desired floor, and preference.
-4. View the optimal slot and the calculated path.
+2.  Open your web browser and navigate to:
+    ```
+    http://127.0.0.1:5000
+    ```
 
-### Option 2: Command Line Interface (CLI)
+3.  Select your preferences:
+    -   **Algorithm**: Choose a specific algorithm or "Run all".
+    -   **Parking Type**: Normal, Ladies, or Disability.
+    -   **Desired Floor**: (Optional) Enter a floor number.
+    -   **Preference**: Closer to Lobby or Car.
+    -   **Show Path**: Check to visualize the route.
 
-1. Run the program script:
-   ```cmd
-   python program.py
-   ```
-2. Follow the interactive prompts to select algorithms and parameters.
+4.  Click **Find Slot** to see the results.
 
----
+## Map Legend
 
-## Map Format (CSV)
+The parking lot maps are defined in CSV files within the `maps/` directory.
 
-Maps are stored in the `maps/` folder. Each `.csv` file represents one floor.
-Cells are comma-separated.
+-   `.`: Road / Driveway
+-   `#`: Wall / Obstacle
+-   `C`: Car Entrance (Start Point)
+-   `O`: Lobby / Pedestrian Exit
+-   `p`, `l`, `d`: Available Parking Slots (Normal, Ladies, Disability)
+-   `N`: Ramp Up (Naik) - Connects to `E` on the floor above.
+-   `T`: Ramp Down (Turun) - Connects to `e` on the floor below.
+-   `E`: Entrance from floor below.
+-   `e`: Entrance from floor above.
+-   `>`, `<`, `^`, `v`: One-way directional arrows.
 
-| Symbol | Meaning                                              |
-| :----- | :--------------------------------------------------- |
-| `#`    | Wall / obstacle                                      |
-| `.`    | Normal road                                          |
-| `>`    | One-way road (Right)                                 |
-| `<`    | One-way road (Left)                                  |
-| `^`    | One-way road (Up)                                    |
-| `v`    | One-way road (Down)                                  |
-| `S`    | Stair / Elevator (Vertical connection)               |
-| `C`    | Car (Start point)                                    |
-| `P`    | Regular Parking Slot                                 |
-| `L`    | Ladies Parking Slot                                  |
-| `D`    | Disability Parking Slot                              |
-| `O`    | Lobby (Destination)                                  |
+## Algorithms Implemented
 
-> **Note**: Stairs (`S`) must be aligned across floors to allow vertical movement.
-
----
-
-## How It Works
-
-The program finds the **best parking slot** by calculating a combined cost:
-
-```
-cost = distance(Car→Slot) * w_car + distance(Lobby→Slot) * w_lobby + (|floor - desired_floor| * 5)
-```
-
-- **Car→Slot**: Distance from entry to the parking spot.
-- **Lobby→Slot**: Walking distance from the parking spot to the lobby.
-- **Floor Preference**: Penalizes floors further from the desired floor.
-
-The slot with the **lowest cost** is selected.
-
+-   **A* (A-Star)**: Uses a heuristic (Manhattan distance) to find the shortest path efficiently.
+-   **Dijkstra**: Guarantees the shortest path but explores more nodes than A*.
+-   **BFS (Breadth-First Search)**: Explores all neighbors layer by layer; guarantees shortest path in unweighted graphs.
+-   **Greedy BFS**: Prioritizes nodes closer to the goal based on heuristic; faster but does not guarantee the shortest path.
