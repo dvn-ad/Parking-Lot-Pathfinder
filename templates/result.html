@@ -20,7 +20,21 @@
               {{ r.algo }}
             {% endif %}
             <small style="margin-left:12px;color:#666">Execution: {{ r.exec_time_str }}</small>
+            <button onclick="openModal('modal-{{ loop.index }}')" style="font-size:12px; padding:4px 8px; margin-left:10px; background:#6c757d;">Show Visited Nodes</button>
           </h2>
+
+          <!-- Modal for Visited Nodes -->
+          <div id="modal-{{ loop.index }}" class="modal">
+            <div class="modal-content">
+              <span class="close" onclick="closeModal('modal-{{ loop.index }}')">&times;</span>
+              <h3>Visited Nodes ({{ r.algo }})</h3>
+              <h4>Car Search (Car &rarr; Slot)</h4>
+              <div class="visited-list">{{ r.visited_car }}</div>
+              <h4>Lobby Search (Lobby &rarr; Slot)</h4>
+              <div class="visited-list">{{ r.visited_lobby }}</div>
+            </div>
+          </div>
+
           {% if not r.best_slot %}
             <p class="error">No valid slot found.</p>
           {% else %}
@@ -139,5 +153,19 @@
 
       <p><a href="/">← Back</a></p>
     </div>
+
+    <script>
+      function openModal(id) {
+        document.getElementById(id).style.display = "block";
+      }
+      function closeModal(id) {
+        document.getElementById(id).style.display = "none";
+      }
+      window.onclick = function(event) {
+        if (event.target.className === 'modal') {
+          event.target.style.display = "none";
+        }
+      }
+    </script>
   </body>
 </html>

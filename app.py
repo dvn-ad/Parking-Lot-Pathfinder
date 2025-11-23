@@ -52,11 +52,18 @@ def find():
             exec_time_str = f"{exec_time:.4f}s"
 
             if result:
-                best_slot, path_car, path_lobby, score = result
-                # Reverse lobby path so it goes from Slot -> Lobby as requested
-                if path_lobby:
-                    path_lobby = path_lobby[::-1]
+                best_slot, path_car, path_lobby, score, visited_car, visited_lobby = result
+                # path_lobby is already Slot -> Lobby from the blind search implementation
                 
+                # Format visited nodes
+                def format_visited(nodes):
+                    # Show all nodes
+                    text = "\n".join([f"Floor {z} ({x+1},{y+1})" for z, y, x in nodes])
+                    return text
+
+                visited_car_str = format_visited(visited_car)
+                visited_lobby_str = format_visited(visited_lobby)
+
                 results.append({
                     'algo': ALGO_CHOICES.get(a, a),
                     'best_slot': best_slot,
@@ -65,6 +72,8 @@ def find():
                     'score': score,
                     'exec_time': exec_time,
                     'exec_time_str': exec_time_str,
+                    'visited_car': visited_car_str,
+                    'visited_lobby': visited_lobby_str
                 })
             else:
                 results.append({

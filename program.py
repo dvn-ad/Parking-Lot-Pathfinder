@@ -32,6 +32,13 @@ def heuristic(a, b):
     # Manhattan distance for 3D grid
     return abs(a[0]-b[0]) + abs(a[1]-b[1]) + abs(a[2]-b[2])
 
+def heuristic_blind(pos, desired_floor):
+    if desired_floor is None:
+        return 0
+    # Heuristic is just vertical distance. 
+    # We can weight it to encourage moving to that floor.
+    return abs(pos[0] - desired_floor) * 10
+
 def can_move(floors, z, y, x, dy, dx, is_pedestrian=False):
     cell = floors[z][y][x]
     
@@ -68,11 +75,29 @@ def get_neighbors(pos, floors, goal=None, is_pedestrian=False):
             # Horizontal movement rules: ONLY allow entering road tiles ('.' or directional arrows)
             # or the exact goal cell. Do NOT treat parking slots, lobbies, or entrances as roads.
             road_tiles = {".", ">", "<", "^", "v", "V", "C", "N", "T"}
-            if (z, ny, nx) != goal and dest not in road_tiles:
+            
+            # Check if destination is the goal
+            is_target = False
+            if isinstance(goal, tuple) and (z, ny, nx) == goal:
+                is_target = True
+            elif isinstance(goal, str) and dest == goal:
+                is_target = True
+                
+            if not is_target and dest not in road_tiles:
                 # destination is not a road and not the goal -> cannot move into it
                 continue
             # check source allows exiting in this direction
-            if can_move(floors, z, y, x, dy, dx, is_pedestrian):
+            allowed = can_move(floors, z, y, x, dy, dx, is_pedestrian)
+            
+            # Allow turning into a parking slot from a directional road
+            if not allowed and not is_pedestrian and is_target:
+                cur_cell = floors[z][y][x]
+                if cur_cell == "^" and dy != 1: allowed = True      # Allow except backward (South)
+                elif cur_cell in ["v", "V"] and dy != -1: allowed = True # Allow except backward (North)
+                elif cur_cell == "<" and dx != 1: allowed = True    # Allow except backward (East)
+                elif cur_cell == ">" and dx != -1: allowed = True   # Allow except backward (West)
+
+            if allowed:
                 neighbors.append((z, ny, nx))
     # Vertical movement rules using new symbols:
     # 'N' = naik (up): can move up to floor z+1 if that cell is 'E' (entrance on upper floor)
@@ -93,102 +118,195 @@ def get_neighbors(pos, floors, goal=None, is_pedestrian=False):
     return neighbors
 
 # ---------- PATHFINDING ALGORITHMS ----------
-def pathfind(floors, start, goal, algo="a_star", is_pedestrian=False):
+def pathfind(floors, start, goal, algo="a_star", is_pedestrian=False, desired_floor=None):
     if algo == "bfs":
-        return bfs(floors, start, goal, is_pedestrian)
+        return bfs(floors, start, goal, is_pedestrian, desired_floor)
     elif algo == "dijkstra":
-        return dijkstra(floors, start, goal, is_pedestrian)
+        return dijkstra(floors, start, goal, is_pedestrian, desired_floor)
     # *** DIUBAH: Sekarang memanggil "greedy_bfs" ***
     elif algo == "greedy_bfs": 
-        return greedy_bfs(floors, start, goal, is_pedestrian)
+        return greedy_bfs(floors, start, goal, is_pedestrian, desired_floor)
     else:
-        return a_star(floors, start, goal, is_pedestrian)
+        return a_star(floors, start, goal, is_pedestrian, desired_floor)
 
-def a_star(floors, start, goal, is_pedestrian=False):
+def a_star(floors, start, goal, is_pedestrian=False, desired_floor=None):
     open_set = []
     heapq.heappush(open_set, (0, start))
     came_from = {}
     g_score = {start: 0}
+    visited_order = []
+
+    # Check if goal is coordinate or symbol
+    is_blind = isinstance(goal, str)
 
     while open_set:
         _, current = heapq.heappop(open_set)
-        if current == goal:
+        visited_order.append(current)
+        
+        found = False
+        if is_blind:
+            z, y, x = current
+            if floors[z][y][x] == goal:
+                # STRICT CHECK: Only accept goal if on desired_floor
+                if desired_floor is None or z == desired_floor:
+                    found = True
+        else:
+            if current == goal:
+                found = True
+        
+        if found:
             path = []
             while current in came_from:
                 path.append(current)
                 current = came_from[current]
             path.append(start)
-            return path[::-1]
+            return path[::-1], visited_order
+            
+        # Pass goal to get_neighbors even if blind, so it can check if neighbor is the target symbol
         for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             tentative_g = g_score[current] + 1
             if tentative_g < g_score.get(neighbor, float("inf")):
                 came_from[neighbor] = current
                 g_score[neighbor] = tentative_g
-                f_score = tentative_g + heuristic(neighbor, goal)
+                
+                if is_blind:
+                    h = heuristic_blind(neighbor, desired_floor)
+                else:
+                    h = heuristic(neighbor, goal)
+                    
+                f_score = tentative_g + h
                 heapq.heappush(open_set, (f_score, neighbor))
-    return None
+    return None, visited_order
 
-def dijkstra(floors, start, goal, is_pedestrian=False):
+def dijkstra(floors, start, goal, is_pedestrian=False, desired_floor=None):
     pq = [(0, start)]
     came_from = {}
     dist = {start: 0}
+    visited_order = []
+    
+    # Check if goal is coordinate or symbol
+    is_blind = isinstance(goal, str)
+    
     while pq:
         cost, current = heapq.heappop(pq)
-        if current == goal:
+        visited_order.append(current)
+        
+        found = False
+        if is_blind:
+            z, y, x = current
+            if floors[z][y][x] == goal:
+                # STRICT CHECK: Only accept goal if on desired_floor
+                if desired_floor is None or z == desired_floor:
+                    found = True
+        else:
+            if current == goal:
+                found = True
+                
+        if found:
             path = []
             while current in came_from:
                 path.append(current)
                 current = came_from[current]
             path.append(start)
-            return path[::-1]
+            return path[::-1], visited_order
+            
+        # Pass goal to get_neighbors even if blind
         for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             new_cost = cost + 1
             if new_cost < dist.get(neighbor, float("inf")):
                 dist[neighbor] = new_cost
                 came_from[neighbor] = current
                 heapq.heappush(pq, (new_cost, neighbor))
-    return None
+    return None, visited_order
 
-def bfs(floors, start, goal, is_pedestrian=False):
+def bfs(floors, start, goal, is_pedestrian=False, desired_floor=None):
     queue = deque([start])
     came_from = {start: None}
+    visited_order = []
+    
+    # Check if goal is coordinate or symbol
+    is_blind = isinstance(goal, str)
+    
     while queue:
         current = queue.popleft()
-        if current == goal:
+        visited_order.append(current)
+        
+        found = False
+        if is_blind:
+            z, y, x = current
+            if floors[z][y][x] == goal:
+                # STRICT CHECK: Only accept goal if on desired_floor
+                if desired_floor is None or z == desired_floor:
+                    found = True
+        else:
+            if current == goal:
+                found = True
+                
+        if found:
             path = []
             while current:
                 path.append(current)
                 current = came_from[current]
-            return path[::-1]
+            return path[::-1], visited_order
+            
+        # Pass goal to get_neighbors even if blind
         for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             if neighbor not in came_from:
                 came_from[neighbor] = current
                 queue.append(neighbor)
-    return None
+    return None, visited_order
 
 # *** DIUBAH: Menggantikan DFS dengan Greedy BFS ***
-def greedy_bfs(floors, start, goal, is_pedestrian=False):
+def greedy_bfs(floors, start, goal, is_pedestrian=False, desired_floor=None):
     open_set = []
-    heapq.heappush(open_set, (heuristic(start, goal), start))
+    
+    # Check if goal is coordinate or symbol
+    is_blind = isinstance(goal, str)
+    
+    if is_blind:
+        h = heuristic_blind(start, desired_floor)
+    else:
+        h = heuristic(start, goal)
+        
+    heapq.heappush(open_set, (h, start))
     came_from = {start: None} 
+    visited_order = []
 
     while open_set:
         _, current = heapq.heappop(open_set)
+        visited_order.append(current)
 
-        if current == goal:
+        found = False
+        if is_blind:
+            z, y, x = current
+            if floors[z][y][x] == goal:
+                # STRICT CHECK: Only accept goal if on desired_floor
+                if desired_floor is None or z == desired_floor:
+                    found = True
+        else:
+            if current == goal:
+                found = True
+
+        if found:
             path = []
             while current:
                 path.append(current)
                 current = came_from[current]
-            return path[::-1]
+            return path[::-1], visited_order
 
+        # Pass goal to get_neighbors even if blind
         for neighbor in get_neighbors(current, floors, goal, is_pedestrian):
             if neighbor not in came_from:
                 came_from[neighbor] = current
-                priority = heuristic(neighbor, goal)
+                
+                if is_blind:
+                    priority = heuristic_blind(neighbor, desired_floor)
+                else:
+                    priority = heuristic(neighbor, goal)
+                    
                 heapq.heappush(open_set, (priority, neighbor))
     
-    return None
+    return None, visited_order
 
 # ---------- SLOT SEARCH ----------
 def find_positions(floors, symbol):
@@ -202,53 +320,76 @@ def find_positions(floors, symbol):
 
 def find_best_slot(floors, algo="a_star", target_symbol="P", desired_floor=None, w_lobby=2, w_car=1):
     cars = find_positions(floors, "C")
-    # target_symbol is provided as uppercase ('P','L','D'); available slots are lowercase
     target_lower = target_symbol.lower()
     slots = find_positions(floors, target_lower)
+    lobbies = find_positions(floors, "O")
 
     if not cars or not slots:
         print(f"[!] Missing required symbols (C or {target_lower}).")
         return None
 
     car = cars[0]
-    best_slot, best_path_car, best_path_lobby = None, None, None
+    best_slot = None
+    best_path_car = None
+    best_path_lobby = None
     best_score = float("inf")
+    best_visited_car = []
+    best_visited_lobby = []
 
     for slot in slots:
         z, y, x = slot
-        lobbies_same_floor = [l for l in find_positions(floors, "O") if l[0] == z]
-        if not lobbies_same_floor:
+        
+        # 1. Calculate Car -> Slot path
+        path_car, visited_car = pathfind(floors, car, slot, algo, is_pedestrian=False)
+        if not path_car:
             continue
 
-        path_car = pathfind(floors, car, slot, algo, is_pedestrian=False)
-        if not path_car or path_car[-1] != slot:
-            continue
+        # 2. Calculate Lobby -> Slot path (nearest lobby on same floor)
+        lobbies_on_floor = [l for l in lobbies if l[0] == z]
+        
+        path_lobby = None
+        visited_lobby = []
+        min_lobby_dist = float("inf")
+        
+        if not lobbies_on_floor:
+            lobby_dist = 9999
+        else:
+            for lobby in lobbies_on_floor:
+                p_l, v_l = pathfind(floors, lobby, slot, algo, is_pedestrian=True)
+                if p_l:
+                    dist = len(p_l)
+                    if dist < min_lobby_dist:
+                        min_lobby_dist = dist
+                        path_lobby = p_l
+                        visited_lobby = v_l
+            
+            if path_lobby is None:
+                lobby_dist = 9999
+            else:
+                lobby_dist = min_lobby_dist
 
-        best_lobby_path = None
-        best_lobby_len = float("inf")
-        for lobby in lobbies_same_floor:
-            path_l = pathfind(floors, lobby, slot, algo, is_pedestrian=True)
-            if path_l and path_l[-1] == slot and len(path_l) < best_lobby_len:
-                best_lobby_len = len(path_l)
-                best_lobby_path = path_l
-
-        if best_lobby_path is None:
-            continue
-
-        floor_diff = abs(z - desired_floor) if desired_floor is not None else 0
-        score = len(path_car) * w_car + len(best_lobby_path) * w_lobby + (floor_diff * 5)
-
+        # 3. Calculate Score
+        # score = jarak(Car->Slot) * w_car + jarak(Lobby->Slot) * w_lobby + (|floor - desired_floor| * 1000)
+        car_dist = len(path_car)
+        floor_penalty = 0
+        if desired_floor is not None:
+            floor_penalty = abs(z - desired_floor) * 1000
+            
+        score = (car_dist * w_car) + (lobby_dist * w_lobby) + floor_penalty
+        
         if score < best_score:
             best_score = score
             best_slot = slot
             best_path_car = path_car
-            best_path_lobby = best_lobby_path
+            best_path_lobby = path_lobby
+            best_visited_car = visited_car
+            best_visited_lobby = visited_lobby
 
     if not best_slot:
-        print("[!] No valid parking slot found that matches the target symbol and is reachable from a lobby.")
+        print("[!] No valid parking slot found.")
         return None
 
-    return best_slot, best_path_car, best_path_lobby, best_score
+    return best_slot, best_path_car, best_path_lobby, best_score, best_visited_car, best_visited_lobby
 
 # ---------- MAIN ----------
 if __name__ == "__main__":
@@ -310,7 +451,7 @@ if __name__ == "__main__":
         exec_time = end_time - start_time
 
         if result:
-            best_slot, path_car, path_lobby, score = result
+            best_slot, path_car, path_lobby, score, visited_car, visited_lobby = result
             print(f"Best slot: Floor {best_slot[0]}, Pos ({best_slot[1]+1}, {best_slot[2]+1})")
             print(f"Total combined cost (Car + Lobby + Floor offset): {score}")
             print(f"Execution Time: {exec_time:.4f} seconds")
